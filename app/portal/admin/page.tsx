@@ -1,5 +1,6 @@
 import { Activity, Database, ShieldCheck, Users } from "lucide-react";
 import { AdminCreateUserForm } from "@/components/admin-create-user-form";
+import { LoadingLink } from "@/components/loading-link";
 import { Badge, Card, Progress } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -13,6 +14,12 @@ export default async function AdminPortal() {
     supabase.from("workflow_users").select("workflow_id, workflow_full_name, workflow_email, workflow_role, workflow_department, workflow_created_at").is("workflow_deleted_at", null).order("workflow_created_at", { ascending: false }).limit(8),
     supabase.from("workflow_audit_logs").select("workflow_id, workflow_action, workflow_entity_name, workflow_outcome, workflow_timestamp").order("workflow_timestamp", { ascending: false }).limit(8)
   ]);
+  const { data: workflows } = await supabase
+    .from("workflow_applications")
+    .select("workflow_id, workflow_name, workflow_department, workflow_status, workflow_objective, workflow_created_at")
+    .is("workflow_deleted_at", null)
+    .order("workflow_created_at", { ascending: false })
+    .limit(6);
 
   return (
     <div className="portal-page">
@@ -64,6 +71,19 @@ export default async function AdminPortal() {
           ))}
         </Card>
       </section>
+      <Card className="table-card" style={{ marginTop: 16 }}>
+        <div className="table-toolbar"><h2>Workflow blueprints</h2><Badge tone="cyan">Live data</Badge></div>
+        {(workflows ?? []).length === 0 ? <div className="empty-state">No workflows available yet.</div> : workflows?.map((workflow) => (
+          <div className="application-row" key={workflow.workflow_id}>
+            <span className="spark-icon"><Database /></span>
+            <div>
+              <LoadingLink href={`/portal/workflows/${workflow.workflow_id}`} className="workflow-link"><strong>{workflow.workflow_name}</strong></LoadingLink>
+              <small>{workflow.workflow_department} · {workflow.workflow_objective}</small>
+            </div>
+            <Badge tone={workflow.workflow_status === "approved" ? "green" : workflow.workflow_status === "in_review" ? "amber" : "gray"}>{workflow.workflow_status}</Badge>
+          </div>
+        ))}
+      </Card>
     </div>
   );
 }

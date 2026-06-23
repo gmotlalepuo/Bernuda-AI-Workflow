@@ -317,6 +317,22 @@ footer { border-top: 1px solid var(--line); padding: 34px 0; }
 .form-grid textarea { min-height: 116px; resize: vertical; }
 .form-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .empty-state { text-align: center; padding: 70px 24px; color: var(--muted); }
+.workflow-link { display: inline-flex; }
+.workflow-link:hover { color: var(--blue); }
+.code-block {
+  margin: 0;
+  padding: 16px;
+  border-radius: 12px;
+  overflow: auto;
+  background: #071322;
+  color: #d7ebff;
+  font-size: 12px;
+  line-height: 1.6;
+  border: 1px solid #1f3651;
+}
+.workflow-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.workflow-actions .form-success,
+.workflow-actions .form-error { width: 100%; margin: 0; }
 
 .icon-theme {
   width: 44px;

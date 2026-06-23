@@ -1,21 +1,34 @@
 import { Bot, Database, FileCheck2, GitBranch } from "lucide-react";
 import { ApplicationBuilderForm } from "@/components/application-builder-form";
+import { LoadingLink } from "@/components/loading-link";
 import { Badge, Card, Progress } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 
 export default async function DesignerPortal() {
   const { supabase } = await requireUser(["admin", "designer"]);
-  const { data: applications } = await supabase
-    .from("workflow_applications")
-    .select("workflow_id, workflow_name, workflow_department, workflow_status, workflow_created_at")
-    .is("workflow_deleted_at", null)
-    .order("workflow_created_at", { ascending: false })
-    .limit(10);
+  const [applicationsQuery, draftCount, reviewCount, approvedCount] = await Promise.all([
+    supabase
+      .from("workflow_applications")
+      .select("workflow_id, workflow_name, workflow_department, workflow_status, workflow_objective, workflow_created_at")
+      .is("workflow_deleted_at", null)
+      .order("workflow_created_at", { ascending: false })
+      .limit(10),
+    supabase.from("workflow_applications").select("workflow_id", { count: "exact", head: true }).eq("workflow_status", "draft").is("workflow_deleted_at", null),
+    supabase.from("workflow_applications").select("workflow_id", { count: "exact", head: true }).eq("workflow_status", "in_review").is("workflow_deleted_at", null),
+    supabase.from("workflow_applications").select("workflow_id", { count: "exact", head: true }).eq("workflow_status", "approved").is("workflow_deleted_at", null)
+  ]);
+  const applications = applicationsQuery.data ?? [];
 
   return (
     <div className="portal-page">
       <div className="page-heading">
         <div><span className="overline">Designer portal</span><h1>Build workflows and executable previews.</h1><p>Create real persisted application blueprints from business requirements.</p></div>
+      </div>
+      <div className="mini-stats">
+        <Card><GitBranch /><div><strong>{draftCount.count ?? 0}</strong><span>Drafts</span></div></Card>
+        <Card><FileCheck2 /><div><strong>{reviewCount.count ?? 0}</strong><span>In review</span></div></Card>
+        <Card><Database /><div><strong>{approvedCount.count ?? 0}</strong><span>Approved</span></div></Card>
+        <Card><Bot /><div><strong>{applications.length}</strong><span>Recent blueprints</span></div></Card>
       </div>
       <div className="profile-callout">
         <div className="completion-ring"><span>76%</span></div>
@@ -38,10 +51,14 @@ export default async function DesignerPortal() {
       </section>
       <Card className="table-card" style={{ marginTop: 16 }}>
         <div className="table-toolbar"><h2>Recent application blueprints</h2><Badge tone="gray">Database records</Badge></div>
-        {(applications ?? []).length === 0 ? <div className="empty-state">No application blueprints yet. Create the first one above.</div> : applications?.map((app) => (
+        {applications.length === 0 ? <div className="empty-state">No application blueprints yet. Create the first one above.</div> : applications.map((app) => (
           <div className="application-row" key={app.workflow_id}>
             <span className="spark-icon"><GitBranch /></span>
-            <div><strong>{app.workflow_name}</strong><small>{app.workflow_department} · {new Date(app.workflow_created_at).toLocaleString()}</small></div>
+            <div>
+              <LoadingLink href={`/portal/workflows/${app.workflow_id}`} className="workflow-link"><strong>{app.workflow_name}</strong></LoadingLink>
+              <small>{app.workflow_department} · {new Date(app.workflow_created_at).toLocaleString()}</small>
+              <small>{app.workflow_objective}</small>
+            </div>
             <Badge tone={app.workflow_status === "approved" ? "green" : "amber"}>{app.workflow_status}</Badge>
           </div>
         ))}

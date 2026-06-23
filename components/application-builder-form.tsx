@@ -1,9 +1,11 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 import { Sparkles } from "lucide-react";
 
 export function ApplicationBuilderForm() {
+  const router = useRouter();
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -24,6 +26,7 @@ export function ApplicationBuilderForm() {
       const result = await response.json();
       if (!response.ok) throw new Error(result.workflow_error ?? "Unable to save application.");
       setMessage(`Saved ${result.workflow_application.workflow_name}.`);
+      router.push(`/portal/workflows/${result.workflow_application.workflow_id}`);
       form.reset();
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to save application.");
