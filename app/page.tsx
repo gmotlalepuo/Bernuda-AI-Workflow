@@ -2,14 +2,26 @@ import { ArrowRight, Bell, Bot, Check, FileCheck2, GitBranch, Layers3, LockKeyho
 import { Badge, Card } from "@/components/ui";
 import { SiteHeader } from "@/components/site-header";
 import { LoadingLink } from "@/components/loading-link";
+import { createAdminClient } from "@/lib/supabase/admin";
 
-const previews = [
-  { title: "Workflow canvas", detail: "Conditional approvals, automation, and handoffs", score: 88, tag: "Designer" },
-  { title: "Persona simulation", detail: "Admin, customer, agent, and manager views", score: 94, tag: "Preview" },
-  { title: "Data blueprint", detail: "Supabase schema, RLS, and integration maps", score: 82, tag: "Architecture" }
-];
+export default async function Home() {
+  const admin = createAdminClient();
+  const [workflowsResult, workflowCountResult, reviewCountResult, approvedCountResult] = await Promise.all([
+    admin
+      .from("workflow_applications")
+      .select("workflow_id, workflow_name, workflow_department, workflow_status, workflow_objective, workflow_created_at")
+      .is("workflow_deleted_at", null)
+      .order("workflow_created_at", { ascending: false })
+      .limit(3),
+    admin.from("workflow_applications").select("workflow_id", { count: "exact", head: true }).is("workflow_deleted_at", null),
+    admin.from("workflow_applications").select("workflow_id", { count: "exact", head: true }).eq("workflow_status", "in_review").is("workflow_deleted_at", null),
+    admin.from("workflow_applications").select("workflow_id", { count: "exact", head: true }).eq("workflow_status", "approved").is("workflow_deleted_at", null)
+  ]);
+  const workflows = workflowsResult.data ?? [];
+  const workflowCount = workflowCountResult.count ?? 0;
+  const reviewCount = reviewCountResult.count ?? 0;
+  const approvedCount = approvedCountResult.count ?? 0;
 
-export default function Home() {
   return (
     <>
       <SiteHeader />
@@ -27,30 +39,30 @@ export default function Home() {
                 <LoadingLink href="/register" className="button button-secondary button-large">Request access</LoadingLink>
               </div>
               <div className="trust-row">
-                <span><Check /> Admin-created accounts</span>
-                <span><ShieldCheck /> Supabase Auth secured</span>
-                <span><LockKeyhole /> Role-based portals</span>
+                <span><Check /> {workflowCount} live workflows</span>
+                <span><ShieldCheck /> {reviewCount} in review</span>
+                <span><LockKeyhole /> {approvedCount} approved</span>
               </div>
             </div>
             <div className="hero-visual">
               <div className="match-window">
                 <div className="window-top">
                   <span className="avatar"><GitBranch size={18} /></span>
-                  <div><small>Executable preview readiness</small><strong>Loan Approval System</strong></div>
+                  <div><small>Executable preview readiness</small><strong>{workflows[0]?.workflow_name ?? "No workflow yet"}</strong></div>
                   <Bell size={19} />
                 </div>
                 <div className="match-highlight">
-                  <div className="match-ring"><span>88<small>%</small></span><em>ready</em></div>
+                  <div className="match-ring"><span>{approvedCount}<small> approved</small></span><em>live</em></div>
                   <div>
                     <Badge tone="cyan">Simulation live</Badge>
-                    <h3>Manager approval flow</h3>
-                    <p>Logic, data, and persona view generated</p>
+                    <h3>{workflows[0]?.workflow_department ?? "No department yet"}</h3>
+                    <p>{workflows[0]?.workflow_objective ?? "Create a workflow from the designer portal to populate this view."}</p>
                   </div>
                 </div>
                 <div className="skill-list">
-                  <span><Check /> RBAC</span>
-                  <span><Check /> Data model</span>
-                  <span><Check /> Workflow JSON</span>
+                  <span><Check /> Live Supabase data</span>
+                  <span><Check /> Role-aware portals</span>
+                  <span><Check /> Workflow transitions</span>
                 </div>
                 <LoadingLink href="/login" className="button button-primary">Open secure workspace <ArrowRight size={16} /></LoadingLink>
               </div>
@@ -65,7 +77,7 @@ export default function Home() {
             <div className="section-heading">
               <span className="eyebrow">Simple by design</span>
               <h2>From requirement to running preview</h2>
-              <p>Bernuda replaces static BRDs with a structured system design that stakeholders can inspect, click, test, and refine.</p>
+              <p>Bernuda replaces static BRDs with a structured system design that stakeholders can inspect, click, test, and refine using live workflow records.</p>
             </div>
             <div className="steps-grid">
               {[
@@ -106,12 +118,20 @@ export default function Home() {
               </div>
             </div>
             <div className="job-stack">
-              {previews.map((item) => (
-                <Card className="job-preview" key={item.title}>
+              {workflows.length === 0 ? (
+                <Card className="job-preview">
                   <div className="job-logo">B</div>
                   <div className="job-main">
-                    <div><Badge tone="gray">{item.tag}</Badge><h3>{item.title}</h3><p>{item.detail}</p><small>Generated from requirements</small></div>
-                    <div className="match-pill"><strong>{item.score}%</strong><span>ready</span></div>
+                    <div><Badge tone="gray">No data</Badge><h3>Create the first workflow</h3><p>Open the designer portal to persist real workflow records.</p><small>Nothing has been seeded yet.</small></div>
+                    <div className="match-pill"><strong>0</strong><span>live</span></div>
+                  </div>
+                </Card>
+              ) : workflows.map((item) => (
+                <Card className="job-preview" key={item.workflow_id}>
+                  <div className="job-logo">B</div>
+                  <div className="job-main">
+                    <div><Badge tone="gray">{item.workflow_status}</Badge><h3>{item.workflow_name}</h3><p>{item.workflow_department}</p><small>{item.workflow_objective}</small></div>
+                    <div className="match-pill"><strong>{new Date(item.workflow_created_at).toLocaleDateString()}</strong><span>created</span></div>
                   </div>
                 </Card>
               ))}
